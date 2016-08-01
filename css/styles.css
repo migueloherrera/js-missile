@@ -92,3 +92,7 @@ h1 {
 #container {
   background: black;
 }
+
+canvas {
+  cursor: crosshair;
+}

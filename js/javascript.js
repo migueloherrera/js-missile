@@ -1,10 +1,12 @@
-// Global variables
+//////// Global variables ////////
 
 var canvasElement = $('#myCanvas')[0];
 var canvas = canvasElement.getContext("2d");
 var CANVAS_WIDTH = $('#myCanvas').width();
 var CANVAS_HEIGHT = $('#myCanvas').height();
 var FPS = 25;
+
+//////////////////////////////////
 
 function drawBase(startX, startY) {
   canvas.beginPath();
@@ -28,16 +30,20 @@ function drawLandscape() {
 function Game() {
   drawLandscape();
   this.cities = [new City(100), new City(150), new City(200), new City(350), new City(400), new City(450)];
+  this.missiles = [];
 }
 
 Game.prototype = {
   constructor: Game,
   update: function() {
     // updates all values
+    this.missiles.forEach(function(m) { m.update(); });
+    this.missiles = this.missiles.filter(function(m){ return m.speed !== 0 });
   },
   draw: function() {
     // draw all objects
     this.cities.forEach(function(c) { c.place(); });
+    this.missiles.forEach(function(m) { m.place(); });
   }
 }
 
@@ -54,6 +60,45 @@ City.prototype = {
   }
 }
 
+/////////// Missile //////////////
+function Missile(toX, toY) {
+  this.toX = toX;
+  this.toY = toY;
+  if (toX < 180) { this.fromX = 40; }
+  else if (toX >= 180 && toX <= 400) { this.fromX = 290; }
+  else if (toX > 400) { this.fromX = 550; }
+  this.fromY = 450;
+  
+  var x = this.toX - this.fromX;
+  var y = this.toY - this.fromY;
+  
+  this.angle = Math.atan(x / y);
+  this.speed = 6;
+  this.distance = 0;
+  console.log("Angle: " + this.angle);
+}
+
+Missile.prototype = {
+  constructor: Missile,
+  update: function() {
+    this.distance -= this.speed;
+    this.posX = Math.sin(this.angle) * this.distance + this.fromX;
+    this.posY = Math.cos(this.angle) * this.distance + this.fromY;
+    if (this.posY <= this.toY) { 
+      this.speed = 0; 
+    }
+  },
+  place: function() {
+    canvas.strokeStyle = "blue";
+    canvas.beginPath();
+    canvas.moveTo(this.fromX, this.fromY);
+    canvas.lineTo(this.posX, this.posY);
+    canvas.closePath();
+    canvas.stroke();
+  }
+}
+///////////////////////////////////
+
 $(document).ready(function() {
   var game = new Game();
 
@@ -63,6 +108,14 @@ $(document).ready(function() {
     game.draw();
   }, 1000/FPS);
   
+  $('#container').on('click', function(event) {
+    var toX = event.pageX - this.offsetLeft;
+    var toY = event.pageY - this.offsetTop;
+    if (toY < 400) {
+      game.missiles.push(new Missile(toX, toY));
+    }
+    console.log(toX, toY);
+  });
 });
 
 /* 
