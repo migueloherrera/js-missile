@@ -11,6 +11,7 @@ function Base(startX, startY) {
   this.x = startX;
   this.y = startY;
   this.half = startX + 40;
+  this.destroy = false;
 }
 
 Base.prototype = {
@@ -51,7 +52,7 @@ Game.prototype = {
   update: function() {
     // updates all values
     
-    var self = this; // my head is spinning with the 
+    var self = this; // my head is spinning with bind, call and apply
     
     this.missiles.forEach(function(m) { 
       m.update();
@@ -76,13 +77,33 @@ Game.prototype = {
           }
         });
       } 
+      
       if (b.destroy) {
         self.explosions.push(new Explosion(b.posX, b.posY)); // create explosion at current coordinates
       }
     });
     this.bombs = this.bombs.filter(function(b) { return !b.destroy });
-    this.explosions.forEach(function(e) { e.update(); });
+    this.explosions.forEach(function(e) { 
+      e.update(); 
+      
+      var limitX1 = e.x - e.radius;
+      var limitX2 = e.x + e.radius;
+      var limitY1 = e.y - e.radius;
+      var limitY2 = e.y + e.radius;
+      
+      // check if the explosion touches a city
+      if (self.cities.length > 0) { 
+        self.cities.forEach(function(c) {
+          if (((c.cityX + 5) >= limitX1 && (c.cityX + 5) <= limitX2 && (c.cityY - 5) <= limitY2) ||
+              ((c.cityX + 15) >= limitX1 && (c.cityX + 15) <= limitX2 && (c.cityY - 5) <= limitY2)) { 
+            c.destroy = true;
+          }
+        });
+      }
+      
+    });
     this.explosions = this.explosions.filter(function(e) { return !e.destroy });
+    this.cities = this.cities.filter(function(c) { return !c.destroy });
   },
   draw: function() {
     // draw all objects
@@ -128,13 +149,15 @@ Explosion.prototype = {
 ///////////// City ///////////////
 function City(cityX) {
   this.cityX = cityX;
+  this.cityY = 455;
+  this.destroy = false;
 }
 
 City.prototype = {
   constructor: City,
   place: function() {
     canvas.fillStyle = "#3535FF";
-    canvas.fillRect(this.cityX, 455, 20, 10);
+    canvas.fillRect(this.cityX, this.cityY, 20, 10);
   }
 }
 
