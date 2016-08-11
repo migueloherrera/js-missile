@@ -96,3 +96,21 @@ h1 {
 canvas {
   cursor: crosshair;
 }
+
+#play {
+  width: 150px;
+  height: 60px;
+  background: #0229BF;
+  color: #FFF;
+  margin: 0 auto;
+  font-family: arial, sans-serif;
+  font-size: 2.3em;
+  font-weight: bold;
+  letter-spacing: 3px;
+  padding: 7px;
+  cursor: pointer;
+}
+
+#play:hover {
+  border: 1px solid #FFFF00;
+}

@@ -1,5 +1,4 @@
 //////// Global variables ////////
-
 var canvasElement = $('#myCanvas')[0];
 var canvas = canvasElement.getContext("2d");
 var CANVAS_WIDTH = $('#myCanvas').width();
@@ -10,6 +9,13 @@ var FPS = 25;
 function Base(startX, startY) {
   this.x = startX;
   this.y = startY;
+  if (startX == 0) {
+    this.number = 1;
+  } else if (startX == 250) {
+    this.number = 2;
+  } else {
+    this.number = 3;
+  }
   this.half = startX + 40;
   this.destroy = false;
 }
@@ -29,7 +35,6 @@ Base.prototype = {
     canvas.fill();
   }
 }
-
 
 //////////// Landscape ///////////
 function drawLandscape() {
@@ -100,10 +105,19 @@ Game.prototype = {
           }
         });
       }
+      // check if the explosion touches a base
+      if (self.bases.length > 0) { 
+        self.bases.forEach(function(ba) {
+          if (ba.half >= limitX1 && ba.half <= limitX2 && ba.y <= limitY2) { 
+            ba.destroy = true;
+          }
+        });
+      }
       
     });
     this.explosions = this.explosions.filter(function(e) { return !e.destroy });
     this.cities = this.cities.filter(function(c) { return !c.destroy });
+    this.bases = this.bases.filter(function(ba) { return !ba.destroy });
   },
   draw: function() {
     // draw all objects
@@ -114,6 +128,38 @@ Game.prototype = {
     this.missiles.forEach(function(m) { m.place(); });
     this.bombs.forEach(function(b) { b.place(); });
     this.explosions.forEach(function(e) { e.place(); });
+  },
+  shootMissile: function(x, y) {
+    this.toX = x;
+    this.toY = y;
+    var fromBase = 2;
+    var baseNumbers = [];
+    this.bases.forEach(function(b) { baseNumbers.push(b.number); });
+    if (this.toY < 400) {
+      if (baseNumbers.length > 0) {
+        if (this.toX < 180) {
+          fromBase = baseNumbers[0];
+        } else if (this.toX >= 180 && this.toX <= 400) {
+          if (baseNumbers.includes(2)) { fromBase = 2; }
+          else if (baseNumbers.includes(1)){ 
+            if (this.toX <= 290) { fromBase = 1; }
+            else { 
+              if (baseNumbers.includes(3)) { 
+                fromBase = 3;            
+              } else {
+                fromBase = 1;
+              } 
+            }
+          }
+          else { fromBase = 3; }
+        } else {
+          if (baseNumbers.includes(3)) { fromBase = 3; }
+          else if (baseNumbers.includes(2)) { fromBase = 2;}
+          else { fromBase = 1; }
+        }
+        this.missiles.push(new Missile(this.toX, this.toY, fromBase));
+      }
+    }
   }
 }
 
@@ -162,13 +208,14 @@ City.prototype = {
 }
 
 /////////// Missile //////////////
-function Missile(toX, toY) {
+function Missile(toX, toY, base) {
   this.toX = toX;
   this.toY = toY;
   this.destroy = false;
-  if (toX < 180) { this.fromX = 40; }
-  else if (toX >= 180 && toX <= 400) { this.fromX = 290; }
-  else if (toX > 400) { this.fromX = 550; }
+  this.base = base;
+  if (this.base == 1) { this.fromX = 40; }
+  else if (this.base == 2) { this.fromX = 290; }
+  else if (this.base == 3) { this.fromX = 540; }
   this.fromY = 450;
   
   var x = this.toX - this.fromX;
@@ -222,7 +269,7 @@ Bomb.prototype = {
     this.distance += this.speed;
     this.posX = Math.sin(this.angle) * this.distance + this.fromX;
     this.posY = Math.cos(this.angle) * this.distance + this.fromY;
-    if (this.posY >= this.toY) { // or it gets into the missile blast
+    if (this.posY >= this.toY) { // if it has reached the ground
       this.destroy = true; 
     }
   },
@@ -239,21 +286,26 @@ Bomb.prototype = {
 
 ///////////// main ///////////////
 $(document).ready(function() {
+  var playing = false;
+  
   var game = new Game();
 
-  // game loop
-  setInterval(function() {
-    game.update();
-    game.draw();
-  }, 1000/FPS);
-  
   $('#container').on('click', function(event) {
-    var toX = event.pageX - this.offsetLeft;
-    var toY = event.pageY - this.offsetTop;
-    if (toY < 400) {
-      game.missiles.push(new Missile(toX, toY));
+    if (playing) {
+      var toX = event.pageX - this.offsetLeft;
+      var toY = event.pageY - this.offsetTop;
+      game.shootMissile(toX, toY);
     }
-    game.bombs.push(new Bomb());
-    //game.explosions.push(new Explosion(toX, toY));
   });
+  
+  $('#play').on('click', function(event) {
+    playing = true;
+    $('#play').fadeOut();
+    // game loop
+    var startGame = setInterval(function() {
+      game.update();
+      game.draw();
+    }, 1000/FPS);
+  });
+  
 });
