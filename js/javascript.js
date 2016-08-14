@@ -45,17 +45,77 @@ function drawLandscape() {
 ///////////// Game ///////////////
 function Game() {
   drawLandscape();
-  this.bases = [new Base(0, 450), new Base(250, 450), new Base(500, 450)];
-  this.cities = [new City(100), new City(150), new City(200), new City(350), new City(400), new City(450)];
-  this.missiles = [];
-  this.bombs = [];
-  this.explosions = [];
+  this.restart();
 }
 
 Game.prototype = {
   constructor: Game,
+  restart: function() {
+    drawLandscape();
+    this.bases = [new Base(0, 450), new Base(250, 450), new Base(500, 450)];
+    this.cities = [new City(100), new City(150), new City(200), new City(350), new City(400), new City(450)];
+    this.missiles = [];
+    this.bombs = [];
+    this.explosions = []; 
+    this.score = 0;
+    this.level = 1;
+    this.theEnd = false;
+    this.started = false;
+    this.playing = false;
+    this.bombing = null;
+    this.missileCount = 15;
+  },
+  reset: function() {
+    this.bases = [new Base(0, 450), new Base(250, 450), new Base(500, 450)];
+    this.cities = [new City(100), new City(150), new City(200), new City(350), new City(400), new City(450)];
+    this.missiles = [];
+    this.bombs = [];
+    this.explosions = [];
+  },
+  next: function() {
+    if (this.level == 1) {
+      canvas.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      drawLandscape();
+    }
+    canvas.font="22px arial";
+    canvas.fillStyle = "#0229BF";
+    canvas.fillText("Level: ", 200, 200);
+    if (this.level > 1) {
+      canvas.fillText("Cities saved: ", 200, 250);
+      canvas.fillText("Bonus: ", 200, 300);
+    }
+    canvas.fillText("Click to continue...", 200, 350);
+    canvas.fillStyle = "red";
+    canvas.fillText(this.level, 270, 200);
+    if (this.level > 1) {
+      canvas.fillText(this.cities.length, 340, 250);
+      canvas.fillText(this.cities.length * 100, 280, 300);
+    }
+  },
+  createBombs: function() {
+    var self1 = this;
+    var times = 0;
+    for (var i = 1; i <= 4; i++) { this.bombs.push(new Bomb(this.level)); }
+    this.bombing = setInterval(function() {
+      for (var i = 1; i <= 4; i++) { self1.bombs.push(new Bomb(self1.level)); }
+      times++;
+      if (times == (self1.level + 1)) { 
+        clearInterval(self1.bombing); 
+      }
+    }, 5000);
+  },
   update: function() {
     // updates all values
+    if (this.cities.length == 0) { // game over
+      this.theEnd = true;
+    }
+    
+    if (this.bombs.length == 0 && this.explosions.length == 0) {
+      this.playing = false;
+      this.missileCount = 15 + (this.level * 2);
+      this.level += 1;
+      console.log(missileCount);
+    }
     
     var self = this; // my head is spinning with bind, call and apply
     
@@ -79,6 +139,7 @@ Game.prototype = {
           // the bomb touches the explosion
           if (b.posX >= limitX1 && b.posX <= limitX2 && b.posY >= limitY1 && b.posY <= limitY2) { 
             b.destroy = true;
+            self.score += 10;
           }
         });
       } 
@@ -112,6 +173,8 @@ Game.prototype = {
             ba.destroy = true;
           }
         });
+      } else {
+        self.missileCount = 0;
       }
       
     });
@@ -123,6 +186,17 @@ Game.prototype = {
     // draw all objects
     canvas.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     drawLandscape();
+    
+    canvas.font = "bold 22px arial";
+    canvas.fillStyle = "#0229BF";
+    canvas.fillText("Score: ", 10, 30);
+    canvas.fillText("Level: ", 250, 30);
+    canvas.fillText("Missiles left: ", 400, 30);
+    canvas.fillStyle = "red";
+    canvas.fillText(this.score, 85, 30);
+    canvas.fillText(this.level, 320, 30);
+    canvas.fillText(this.missileCount, 540, 30);    
+    
     this.cities.forEach(function(c) { c.place(); });
     this.bases.forEach(function(ba) { ba.place(); });
     this.missiles.forEach(function(m) { m.place(); });
@@ -157,9 +231,17 @@ Game.prototype = {
           else if (baseNumbers.includes(2)) { fromBase = 2;}
           else { fromBase = 1; }
         }
-        this.missiles.push(new Missile(this.toX, this.toY, fromBase));
+        this.missileCount--;
+        if (this.missileCount > 0) {
+          this.missiles.push(new Missile(this.toX, this.toY, fromBase));
+        }
       }
     }
+  },
+  over: function() {
+    canvas.font = "bold 44px arial";
+    canvas.fillStyle = "#0229BF";
+    canvas.fillText("The end!!", 200, 200);
   }
 }
 
@@ -248,7 +330,7 @@ Missile.prototype = {
 }
 
 /////////// Bomb //////////////
-function Bomb() {
+function Bomb(sp) {
   this.destroy = false;
   this.toX = Math.floor(Math.random() * CANVAS_WIDTH);
   this.toY = 450;
@@ -259,7 +341,7 @@ function Bomb() {
   var y = this.toY - this.fromY;
   
   this.angle = Math.atan(x / y);
-  this.speed = 2;
+  this.speed = (sp * 0.2) + 1;
   this.distance = 0;
 }
 
@@ -286,25 +368,42 @@ Bomb.prototype = {
 
 ///////////// main ///////////////
 $(document).ready(function() {
-  var playing = false;
-  
   var game = new Game();
-
+  var startGame = null;
+    
   $('#container').on('click', function(event) {
-    if (playing) {
+    if (game.started && game.playing) {
       var toX = event.pageX - this.offsetLeft;
       var toY = event.pageY - this.offsetTop;
       game.shootMissile(toX, toY);
+      console.log("Missiles left: ", game.missileCount);
+    } else if (game.started && !game.playing) {
+      game.playing = true;
+      if (game.level > 1) {
+        game.score += (game.cities.length * 100);
+        game.reset();
+      }
+      game.createBombs();
     }
   });
   
-  $('#play').on('click', function(event) {
-    playing = true;
+  $('#play').on('click', function() {
+    game.restart();
+    game.started = true;
     $('#play').fadeOut();
     // game loop
-    var startGame = setInterval(function() {
-      game.update();
-      game.draw();
+    startGame = setInterval(function() {
+      if (game.started && game.playing) {
+        game.update();
+        game.draw();
+      } else if (game.started && !game.playing) {
+        game.next();
+      }
+      if (game.theEnd) {
+        game.over();
+        clearInterval(startGame);
+        $('#play').fadeIn();
+      }
     }, 1000/FPS);
   });
   
