@@ -114,7 +114,6 @@ Game.prototype = {
       this.playing = false;
       this.missileCount = 15 + (this.level * 2);
       this.level += 1;
-      console.log(missileCount);
     }
     
     var self = this; // my head is spinning with bind, call and apply
@@ -191,7 +190,7 @@ Game.prototype = {
     canvas.fillStyle = "#0229BF";
     canvas.fillText("Score: ", 10, 30);
     canvas.fillText("Level: ", 250, 30);
-    canvas.fillText("Missiles left: ", 400, 30);
+    canvas.fillText("Missiles: ", 440, 30);
     canvas.fillStyle = "red";
     canvas.fillText(this.score, 85, 30);
     canvas.fillText(this.level, 320, 30);
@@ -376,7 +375,6 @@ $(document).ready(function() {
       var toX = event.pageX - this.offsetLeft;
       var toY = event.pageY - this.offsetTop;
       game.shootMissile(toX, toY);
-      console.log("Missiles left: ", game.missileCount);
     } else if (game.started && !game.playing) {
       game.playing = true;
       if (game.level > 1) {
